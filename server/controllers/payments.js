@@ -1,4 +1,4 @@
-const { instance } = require("../config/razorpay")
+const stripe = require("../config/stripe")
 const Course = require("../models/Course")
 const crypto = require("crypto")
 const User = require("../models/User")
@@ -10,7 +10,7 @@ const {
 const { paymentSuccessEmail } = require("../mail/templates/paymentSuccessEmail")
 const CourseProgress = require("../models/CourseProgress")
 
-// Capture the payment and initiate the Razorpay order
+// Capture the payment and initiate the Stripe order
 exports.capturePayment = async (req, res) => {
   const { courses } = req.body
   const userId = req.user.id
@@ -49,19 +49,44 @@ exports.capturePayment = async (req, res) => {
     }
   }
 
-  const options = {
-    amount: total_amount * 100,
-    currency: "INR",
-    receipt: Math.random(Date.now()).toString(),
-  }
+  const customer = await stripe.customers.create({
+    email: req.user.email,
+    metadata: {
+        userId: req.user.id,
+    }
+  })
+
+  const line_items = courses.map((course_id) => ({
+      price_data: {
+          currency: "usd",
+          product_data: {
+              name: "Course",
+              description: "A course from StudyNotion"
+          },
+          unit_amount: total_amount * 100,
+      },
+      quantity: 1,
+  }));
+
 
   try {
-    // Initiate the payment using Razorpay
-    const paymentResponse = await instance.orders.create(options)
-    console.log(paymentResponse)
+    // Initiate the payment using Stripe
+    const session = await stripe.checkout.sessions.create({
+        payment_method_types: ["card"],
+        line_items,
+        mode: "payment",
+        customer: customer.id,
+        success_url: `${process.env.REACT_APP_FRONTEND_URL}/dashboard/enrolled-courses`,
+        cancel_url: `${process.env.REACT_APP_FRONTEND_URL}/dashboard/cart`,
+        metadata: {
+          courses: JSON.stringify(courses),
+          userId: req.user.id,
+        },
+    })
+    
     res.json({
       success: true,
-      data: paymentResponse,
+      data: session,
     })
   } catch (error) {
     console.log(error)
@@ -73,36 +98,28 @@ exports.capturePayment = async (req, res) => {
 
 // verify the payment
 exports.verifyPayment = async (req, res) => {
-  const razorpay_order_id = req.body?.razorpay_order_id
-  const razorpay_payment_id = req.body?.razorpay_payment_id
-  const razorpay_signature = req.body?.razorpay_signature
-  const courses = req.body?.courses
+    const { "stripe-signature": signature } = req.headers;
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+    let event;
 
-  const userId = req.user.id
+    try {
+        event = stripe.webhooks.constructEvent(
+            req.body,
+            signature,
+            webhookSecret
+        );
+    } catch (err) {
+        return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
 
-  if (
-    !razorpay_order_id ||
-    !razorpay_payment_id ||
-    !razorpay_signature ||
-    !courses ||
-    !userId
-  ) {
-    return res.status(200).json({ success: false, message: "Payment Failed" })
-  }
+    if (event.type === 'checkout.session.completed') {
+        const session = event.data.object;
+        const { courses, userId } = session.metadata;
 
-  let body = razorpay_order_id + "|" + razorpay_payment_id
+        await enrollStudents(JSON.parse(courses), userId, res)
+    }
 
-  const expectedSignature = crypto
-    .createHmac("sha256", process.env.RAZORPAY_SECRET)
-    .update(body.toString())
-    .digest("hex")
-
-  if (expectedSignature === razorpay_signature) {
-    await enrollStudents(courses, userId, res)
-    return res.status(200).json({ success: true, message: "Payment Verified" })
-  }
-
-  return res.status(200).json({ success: false, message: "Payment Failed" })
+  return res.status(200).json({ success: true, message: "Payment Verified" })
 }
 
 // Send Payment Success Email
