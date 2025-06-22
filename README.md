@@ -1,19 +1,10 @@
 <div align="center">
-  <a href="https://studynotion-edtech-project.netlify.app/">
-    <img src="https://i.ibb.co/0j2aB1q/readme-banner.png" alt="StudyNotion Banner" />
-  </a>
-  <br/>
   <h1>StudyNotion - An Online Learning Platform</h1>
   <p>
     <b>A feature-rich, full-stack online learning platform built with the MERN stack (MongoDB, Express.js, React.js, Node.js) and integrated with Stripe for international payments. This project showcases a robust, scalable, and secure architecture for modern web applications.</b>
   </p>
   <br/>
 </div>
-
-## 🚀 Live Demo
-
-You can experience the live version of StudyNotion here:
-**[studynotion-edtech-project.netlify.app](https://studynotion-edtech-project.netlify.app/)**
 
 ---
 
