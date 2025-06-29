@@ -25,12 +25,30 @@ database.connect();
 // Middlewares
 app.use(express.json());
 app.use(cookieParser());
+
+// CORS configuration
+const allowedOrigins = [
+	'http://localhost:3000',
+	// 'https://studynotion.vercel.app',
+	// 'https://your-app-name.vercel.app' // Replace with your actual Vercel domain
+];
+
 app.use(
 	cors({
-		origin: "*",
+		origin: function (origin, callback) {
+			// Allow requests with no origin (like mobile apps or curl requests)
+			if (!origin) return callback(null, true);
+			
+			if (allowedOrigins.indexOf(origin) !== -1) {
+				callback(null, true);
+			} else {
+				callback(new Error('Not allowed by CORS'));
+			}
+		},
 		credentials: true,
 	})
 );
+
 app.use(
 	fileUpload({
 		useTempFiles: true,
