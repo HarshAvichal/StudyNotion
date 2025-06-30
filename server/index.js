@@ -30,6 +30,7 @@ app.use(cookieParser());
 const allowedOrigins = [
 	'http://localhost:3000',
 	'https://studynotion-rust.vercel.app',
+	'https://studynotion-lycu.onrender.com'
 ];
 
 app.use(
