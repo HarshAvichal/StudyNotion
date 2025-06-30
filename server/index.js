@@ -29,8 +29,7 @@ app.use(cookieParser());
 // CORS configuration
 const allowedOrigins = [
 	'http://localhost:3000',
-	// 'https://studynotion.vercel.app',
-	// 'https://your-app-name.vercel.app' // Replace with your actual Vercel domain
+	'https://studynotion-rust.vercel.app',
 ];
 
 app.use(
